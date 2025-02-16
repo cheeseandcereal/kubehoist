@@ -1,0 +1,14 @@
+apiVersion: controller.kubehoist.io/v1alpha1
+kind: ControllerWatch
+metadata:
+  labels:
+    app.kubernetes.io/name: kubehoist
+    app.kubernetes.io/managed-by: kustomize
+  name: controllerwatch-sample
+spec:
+  helmSpec:
+    chart: oci://registry-1.docker.io/bitnamicharts/cert-manager
+    namespace: default
+    releaseName: certmanager
+    values: |
+      installCRDs: true
