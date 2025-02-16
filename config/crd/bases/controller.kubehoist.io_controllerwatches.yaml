@@ -11,8 +11,10 @@ spec:
     kind: ControllerWatch
     listKind: ControllerWatchList
     plural: controllerwatches
+    shortNames:
+    - cw
     singular: controllerwatch
-  scope: Namespaced
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:

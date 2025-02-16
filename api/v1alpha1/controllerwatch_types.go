@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type CRDInstallationStatus string
@@ -91,8 +92,21 @@ type GroupVersionKind struct {
 	Kind    string `json:"kind"`
 }
 
+func (g GroupVersionKind) ToSchemaGVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   g.Group,
+		Version: g.Version,
+		Kind:    g.Kind,
+	}
+}
+
+func (g GroupVersionKind) String() string {
+	return g.Group + "/" + g.Version + " " + g.Kind
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster,shortName=cw
 
 // ControllerWatch is the Schema for the controllerwatches API.
 type ControllerWatch struct {

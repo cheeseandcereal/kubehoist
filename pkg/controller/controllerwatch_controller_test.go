@@ -37,8 +37,7 @@ var _ = Describe("ControllerWatch Controller", func() {
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Name: resourceName,
 		}
 		controllerwatch := &controllerv1alpha1.ControllerWatch{}
 
@@ -70,7 +69,6 @@ var _ = Describe("ControllerWatch Controller", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &ControllerWatchReconciler{
 				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

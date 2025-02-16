@@ -112,6 +112,10 @@ func (h *HelmClient) InstallChartCRDs(ctx context.Context, opts InstallOptions, 
 			}
 		}
 	}
+	// TODO: Investigate CRD installation race condition: https://github.com/kubernetes/kubectl/issues/1117
+	// for _, crd := range installedCRDs {
+	// 	// TODO wait for the CRD to be ready by checking the condition estabilished status
+	// }
 
 	return installedCRDs, nil
 }

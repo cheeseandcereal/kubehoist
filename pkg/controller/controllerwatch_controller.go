@@ -21,22 +21,24 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/yaml"
 
 	controllerv1alpha1 "github.com/cheeseandcereal/kubehoist/api/v1alpha1"
 	"github.com/cheeseandcereal/kubehoist/pkg/helm"
+	"github.com/cheeseandcereal/kubehoist/pkg/watcher"
 	"github.com/go-logr/logr"
 )
 
 // ControllerWatchReconciler reconciles a ControllerWatch object
 type ControllerWatchReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	HelmClient *helm.HelmClient
+	Manager        manager.Manager
+	HelmClient     *helm.HelmClient
+	customWatchers map[string]*watcher.GenericWatcher
 }
 
 // +kubebuilder:rbac:groups=controller.kubehoist.io,resources=controllerwatches,verbs=get;list;watch;create;update;patch;delete
@@ -73,6 +75,26 @@ func (r *ControllerWatchReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if controllerWatchResource.Status.CRDsInstallationStatus != controllerv1alpha1.CRDInstallationStatusInstalled {
 		err := r.installCRDs(ctx, &controllerWatchResource, log)
 		return ctrl.Result{}, err
+	}
+
+	if len(controllerWatchResource.Status.InstalledCRDs) > 0 {
+		// Make sure we have a registered watchers for all the CRDs
+		for _, crd := range controllerWatchResource.Status.InstalledCRDs {
+			if _, ok := r.customWatchers[crd.String()]; !ok {
+				log.Info("Creating watcher for CRD", "crd", crd)
+				watcher := &watcher.GenericWatcher{
+					Client:          r.Manager.GetClient(),
+					GVK:             crd.ToSchemaGVK(),
+					ControllerWatch: req.NamespacedName,
+				}
+				// Start the watcher
+				if err := watcher.SetupWithManager(r.Manager); err != nil {
+					log.Error(err, "Failed to setup watcher for CRD", "crd", crd)
+					return ctrl.Result{}, err
+				}
+				r.customWatchers[crd.String()] = watcher
+			}
+		}
 	}
 
 	if controllerWatchResource.Status.ControllerInstallationStatus == controllerv1alpha1.ControllerInstallationStatusPending {
@@ -156,6 +178,9 @@ func (r *ControllerWatchReconciler) updateStatus(ctx context.Context, controller
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ControllerWatchReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.customWatchers == nil {
+		r.customWatchers = map[string]*watcher.GenericWatcher{}
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&controllerv1alpha1.ControllerWatch{}).
 		Named("controllerwatch").
